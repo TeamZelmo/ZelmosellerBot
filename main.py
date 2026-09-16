@@ -1,10 +1,7 @@
 """
-Yeh single entrypoint hai jo:
-1. Telegram bot ko polling mode mein chalata hai
-2. FastAPI webhook server ko chalata hai (Razorpay/Binance payment confirmations ke liye)
-
-Dono ek hi asyncio event loop mein chalte hain, isliye webhook aane par bot
-seedha user ko message bhej sakta hai (koi extra queue/thread ki zaroorat nahi).
+Entry point jo dono ko sath me run karta hai:
+1. Telegram Bot (Polling mode)
+2. FastAPI Webhook Server (Razorpay aur Binance confirmations ke liye)
 
 Run: python main.py
 """

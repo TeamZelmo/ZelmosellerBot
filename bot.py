@@ -26,46 +26,9 @@ logger = logging.getLogger(__name__)[cite: 3]
 bot = Bot(token=config.BOT_TOKEN)[cite: 3]
 dp = Dispatcher()[cite: 3]
 
-# ------------------------------------------------------------------
-# /help Command (User & Admin Smart Menu)
-# ------------------------------------------------------------------
-@dp.message(Command("help"))
-async def cmd_help(message: Message):
-    is_admin = message.from_user.id in config.ADMIN_IDS
 
-    # Normal users ke liye help guide
-    help_text = (
-        "📖 <b>Store Help & Commands:</b>\n\n"
-        "🛍️ <code>/shop</code> — Hamare active products browse karein\n"
-        "📦 <code>/orders</code> — Apni previous order history check karein\n"
-        "❓ <code>/help</code> — Yeh command list dekhein\n\n"
-        "💡 <b>Quick Tips:</b>\n"
-        "• Screen ke neeche diye buttons se aap direct Currency change kar sakte hain aur Profile/Support access kar sakte hain.\n"
-        "• UPI (GPay/PhonePe/Paytm) aur Binance Pay (USDT) dono se payment kar sakte hain.\n"
-    )
-
-    # Agar sender admin hai, toh admin commands bhi list honge
-    if is_admin:
-        help_text += (
-            "\n"
-            "━━━━━━━━━━━━━━━━━━━\n"
-            "🛠️ <b>Admin Control Panel:</b>\n\n"
-            "➕ <b>Single Product:</b>\n"
-            "<code>/addproduct Name | Description | price_inr | price_usdt | stock</code>\n\n"
-            "📦 <b>Bulk Products:</b>\n"
-            "<code>/bulkadd\n"
-            "Item1 | Desc | inr | usdt | stock\n"
-            "Item2 | Desc | inr | usdt | stock</code>\n\n"
-            "✏️ <b>Change Price:</b>\n"
-            "<code>/setprice &lt;product_id&gt; | &lt;inr&gt; | &lt;usdt&gt;</code>\n\n"
-            "🗑️ <b>Delete Product:</b>\n"
-            "<code>/delproduct &lt;product_id&gt;</code>\n"
-        )
-
-    await message.answer(help_text, parse_mode=ParseMode.HTML)
-    
 # ------------------------------------------------------------------
-# /start & Main Navigation
+# /start & Bottom Navigation
 # ------------------------------------------------------------------
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
@@ -116,6 +79,48 @@ async def cmd_orders(message: Message):
 
 
 # ------------------------------------------------------------------
+# Help Commands (Separate for User & Admin)
+# ------------------------------------------------------------------
+@dp.message(Command("help"))
+async def cmd_user_help(message: Message):
+    text = (
+        "📖 <b>User Guide & Commands:</b>\n\n"
+        "🛍️ <code>/shop</code> — Products catalog browse karein[cite: 9]\n"
+        "📦 <code>/orders</code> — Apne pichle orders check karein[cite: 9]\n"
+        "❓ <code>/help</code> — Yeh command list dekhein\n\n"
+        "<b>Navigation Tips:</b>\n"
+        "• Screen ke neeche diye gaye buttons se direct <b>Shop</b>, <b>Orders</b>, aur <b>Profile</b> open karein.\n"
+        "• <b>Change Currency</b> button se payment INR (₹) ya USDT ($) me switch kar sakte hain.\n"
+        "• UPI (GPay/PhonePe/Paytm) aur Binance Pay dono accepted hain[cite: 9]."
+    )
+    await message.answer(text, parse_mode=ParseMode.HTML)
+
+
+@dp.message(Command("adminhelp"))
+async def cmd_admin_help(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:[cite: 3]
+        await message.answer("⛔ Aap admin nahi hain.")[cite: 3]
+        return
+
+    text = (
+        "🛠️ <b>Admin Control Panel Commands:</b>\n\n"
+        "➕ <b>Single Product Add:</b>\n"
+        "<code>/addproduct Name | Description | price_inr | price_usdt | stock</code>[cite: 9]\n\n"
+        "📦 <b>Bulk Products Add:</b>\n"
+        "<code>/bulkadd\n"
+        "Item 1 | Desc 1 | 199 | 2.5 | 50\n"
+        "Item 2 | Desc 2 | 499 | 6.0 | 20</code>\n\n"
+        "✏️ <b>Price Change:</b>\n"
+        "<code>/setprice &lt;product_id&gt; | &lt;price_inr&gt; | &lt;price_usdt&gt;</code>\n"
+        "<i>Example: /setprice 3 | 399 | 4.9</i>\n\n"
+        "🗑️ <b>Delete Product:</b>\n"
+        "<code>/delproduct &lt;product_id&gt;</code>\n"
+        "<i>Example: /delproduct 5</i>"
+    )
+    await message.answer(text, parse_mode=ParseMode.HTML)
+
+
+# ------------------------------------------------------------------
 # Profile Pop-up Handlers
 # ------------------------------------------------------------------
 @dp.message(F.text.in_(["👤 Profile", "profile"]))
@@ -143,7 +148,6 @@ async def show_profile_popup_callback(callback: CallbackQuery):
         f"🔗 Username: {username}\n"
         f"💰 Wallet: {balance:.2f} {curr}"
     )
-    # show_alert=True screen par center pop-up dialog box open karta hai
     await callback.answer(popup_text, show_alert=True)
 
 
@@ -190,7 +194,7 @@ async def back_menu(message: Message):
 
 
 # ------------------------------------------------------------------
-# Admin Commands
+# Admin Management Commands
 # ------------------------------------------------------------------
 @dp.message(Command("addproduct"))
 async def cmd_add_product(message: Message):
@@ -223,7 +227,7 @@ async def cmd_del_product(message: Message):
             return
         product_id = int(parts[1])
         if db.delete_product(product_id):
-            await message.answer(f"🗑️ Product ID <code>{product_id}</code> successfully hata diya gaya.", parse_mode=ParseMode.HTML)
+            await message.answer(f"🗑️ Product ID <code>{product_id}</code> successfully delete ho gaya.", parse_mode=ParseMode.HTML)
         else:
             await message.answer(f"❌ Product ID <code>{product_id}</code> nahi mila.", parse_mode=ParseMode.HTML)
     except Exception as e:
@@ -279,7 +283,7 @@ async def cmd_bulk_add(message: Message):
 
 
 # ------------------------------------------------------------------
-# Product Detail View
+# Catalog & Product Details
 # ------------------------------------------------------------------
 @dp.callback_query(F.data.startswith("product_"))
 async def show_product(callback: CallbackQuery):

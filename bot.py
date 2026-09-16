@@ -10,6 +10,8 @@ from aiogram.types import CallbackQuery, LinkPreviewOptions, Message
 
 import config
 import database as db
+import binance_pay
+import razorpay_upi
 from keyboards import (
     check_payment_keyboard,
     currency_bottom_keyboard,
@@ -19,7 +21,7 @@ from keyboards import (
     profile_popup_keyboard,
     quantity_bottom_keyboard,
 )
-from payments import binance_pay, razorpay_upi
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

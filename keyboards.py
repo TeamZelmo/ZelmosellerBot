@@ -39,17 +39,11 @@ def products_keyboard(products: list, currency: str = "INR") -> InlineKeyboardMa
 
 def quantity_inline_keyboard(product_id: int, qty: int, stock: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    # Row 1: - , Display, +
     kb.button(text="➖", callback_data=f"qty_dec_{product_id}_{qty}")
     kb.button(text=f"📦 {qty}", callback_data="qty_noop")
     kb.button(text="➕", callback_data=f"qty_inc_{product_id}_{qty}_{stock}")
-
-    # Row 2: Proceed
     kb.button(text="💳 Proceed to Checkout", callback_data=f"qty_confirm_{product_id}_{qty}")
-
-    # Row 3: Back
     kb.button(text="⬅️ Back to Catalog", callback_data="back_to_catalog")
-
     kb.adjust(3, 1, 1)
     return kb.as_markup()
 

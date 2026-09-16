@@ -1,10 +1,4 @@
-"""
-Entry point jo dono ko sath me run karta hai:
-1. Telegram Bot (Polling mode)
-2. FastAPI Webhook Server (Razorpay aur Binance confirmations ke liye)
 
-Run: python main.py
-"""
 import asyncio
 import logging
 import uvicorn

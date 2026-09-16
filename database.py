@@ -1,6 +1,6 @@
-import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
+import sqlite3
 from config import DB_PATH
 
 
@@ -39,9 +39,9 @@ def init_db():
                 quantity INTEGER DEFAULT 1,
                 amount REAL NOT NULL,
                 currency TEXT NOT NULL,
-                payment_method TEXT NOT NULL,     -- 'upi' or 'binance'
-                gateway_order_id TEXT,            -- Razorpay order_id or Binance prepayId
-                status TEXT DEFAULT 'pending',    -- pending / paid / failed / cancelled
+                payment_method TEXT NOT NULL,
+                gateway_order_id TEXT,
+                status TEXT DEFAULT 'pending',
                 created_at TEXT,
                 paid_at TEXT
             )
@@ -51,6 +51,7 @@ def init_db():
                 user_id INTEGER PRIMARY KEY,
                 username TEXT,
                 first_name TEXT,
+                currency TEXT DEFAULT 'INR',
                 joined_at TEXT
             )
         """)
@@ -62,35 +63,62 @@ def upsert_user(user_id, username, first_name):
         conn.execute("""
             INSERT INTO users (user_id, username, first_name, joined_at)
             VALUES (?, ?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET username=excluded.username, first_name=excluded.first_name
+            ON CONFLICT(user_id) DO UPDATE SET
+                username = excluded.username,
+                first_name = excluded.first_name
         """, (user_id, username, first_name, datetime.utcnow().isoformat()))
+
+
+def set_user_currency(user_id: int, currency: str):
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET currency = ? WHERE user_id = ?", (currency.upper(), user_id))
+
+
+def get_user_currency(user_id: int) -> str:
+    with get_conn() as conn:
+        row = conn.execute("SELECT currency FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        return row["currency"] if row and row["currency"] else "INR"
 
 
 # ---------------- Products ----------------
 def add_product(name, description, price_inr, price_usdt, image_url="", stock=100):
     with get_conn() as conn:
         cur = conn.execute("""
-            INSERT INTO products (name, description, price_inr, price_usdt, image_url, stock)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO products (name, description, price_inr, price_usdt, image_url, stock, active)
+            VALUES (?, ?, ?, ?, ?, ?, 1)
         """, (name, description, price_inr, price_usdt, image_url, stock))
         return cur.lastrowid
 
 
 def get_active_products():
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM products WHERE active=1 AND stock > 0").fetchall()
+        rows = conn.execute("SELECT * FROM products WHERE active = 1 AND stock > 0").fetchall()
         return [dict(r) for r in rows]
 
 
 def get_product(product_id):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM products WHERE id=?", (product_id,)).fetchone()
+        row = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
         return dict(row) if row else None
+
+
+def update_product_price(product_id: int, price_inr: float, price_usdt: float) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("""
+            UPDATE products SET price_inr = ?, price_usdt = ? WHERE id = ?
+        """, (price_inr, price_usdt, product_id))
+        return cur.rowcount > 0
+
+
+def delete_product(product_id: int) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute("UPDATE products SET active = 0 WHERE id = ?", (product_id,))
+        return cur.rowcount > 0
 
 
 def decrement_stock(product_id, qty=1):
     with get_conn() as conn:
-        conn.execute("UPDATE products SET stock = stock - ? WHERE id=?", (qty, product_id))
+        conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?", (qty, product_id))
 
 
 # ---------------- Orders ----------------
@@ -107,28 +135,27 @@ def create_order(user_id, username, product_id, quantity, amount, currency, paym
 
 def set_gateway_order_id(order_id, gateway_order_id):
     with get_conn() as conn:
-        conn.execute("UPDATE orders SET gateway_order_id=? WHERE id=?", (gateway_order_id, order_id))
+        conn.execute("UPDATE orders SET gateway_order_id = ? WHERE id = ?", (gateway_order_id, order_id))
 
 
 def mark_order_paid(gateway_order_id):
-    """Returns the order row (dict) that was marked paid, or None if not found."""
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM orders WHERE gateway_order_id=?", (gateway_order_id,)).fetchone()
+        row = conn.execute("SELECT * FROM orders WHERE gateway_order_id = ?", (gateway_order_id,)).fetchone()
         if not row:
             return None
         conn.execute("""
-            UPDATE orders SET status='paid', paid_at=? WHERE gateway_order_id=?
+            UPDATE orders SET status = 'paid', paid_at = ? WHERE gateway_order_id = ?
         """, (datetime.utcnow().isoformat(), gateway_order_id))
         return dict(row)
 
 
 def get_order(order_id):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM orders WHERE id=?", (order_id,)).fetchone()
+        row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
         return dict(row) if row else None
 
 
 def get_user_orders(user_id):
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM orders WHERE user_id=? ORDER BY id DESC", (user_id,)).fetchall()
+        rows = conn.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", (user_id,)).fetchall()
         return [dict(r) for r in rows]

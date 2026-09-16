@@ -1,0 +1,352 @@
+[
+  {
+    "id": 1,
+    "name": "Netflix 1 Month UHD",
+    "description": "4K Ultra HD Single Profile Shared",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 2,
+    "name": "ChatGPT Plus 1 Month",
+    "description": "Personal Private Access GPT-4o",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  },
+  {
+    "id": 3,
+    "name": "Prime Video 6 Months",
+    "description": "6 Months Personal Profile 4K",
+    "price_inr": 399.0,
+    "price_usdt": 5.0
+  },
+  {
+    "id": 4,
+    "name": "Spotify Premium 1 Year",
+    "description": "1 Year Account Ad-Free Music",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 5,
+    "name": "YouTube Premium 6 Months",
+    "description": "Personal Mail Invite Background Play",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 6,
+    "name": "Canva Pro 1 Year",
+    "description": "Educational / Private Full Access",
+    "price_inr": 149.0,
+    "price_usdt": 1.8
+  },
+  {
+    "id": 7,
+    "name": "Disney+ Hotstar 3 Months",
+    "description": "Super Plan HD All Devices",
+    "price_inr": 179.0,
+    "price_usdt": 2.2
+  },
+  {
+    "id": 8,
+    "name": "Apple Music 6 Months",
+    "description": "Individual Lossless Audio Plan",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 9,
+    "name": "Sony LIV 1 Year",
+    "description": "Premium FHD Live Sports & Shows",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 10,
+    "name": "Telegram Premium 3 Months",
+    "description": "Direct Gift Fast Speed & Badges",
+    "price_inr": 349.0,
+    "price_usdt": 4.2
+  },
+  {
+    "id": 11,
+    "name": "Zee5 Premium 1 Year",
+    "description": "1 Year 4K All Screens Unlocked",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 12,
+    "name": "JioCinema Premium 1 Year",
+    "description": "Ultra HD Ad-Free Movies & Series",
+    "price_inr": 149.0,
+    "price_usdt": 1.8
+  },
+  {
+    "id": 13,
+    "name": "Crunchyroll Mega Fan 1 Year",
+    "description": "Personal Anime Offline & 4 Screens",
+    "price_inr": 399.0,
+    "price_usdt": 4.8
+  },
+  {
+    "id": 14,
+    "name": "NordVPN 1 Year",
+    "description": "Private Account High Speed Servers",
+    "price_inr": 449.0,
+    "price_usdt": 5.5
+  },
+  {
+    "id": 15,
+    "name": "ExpressVPN 6 Months",
+    "description": "Unlimited Bandwidth High Speed",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  },
+  {
+    "id": 16,
+    "name": "Truecaller Premium 1 Year",
+    "description": "Gold Plan Caller ID & Spam Shield",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 17,
+    "name": "Adobe Creative Cloud 1 Year",
+    "description": "All Apps 100GB Cloud Edu Access",
+    "price_inr": 899.0,
+    "price_usdt": 11.0
+  },
+  {
+    "id": 18,
+    "name": "CapCut Pro 1 Year",
+    "description": "Private Account All Features & Effects",
+    "price_inr": 349.0,
+    "price_usdt": 4.2
+  },
+  {
+    "id": 19,
+    "name": "Duolingo Super 1 Year",
+    "description": "Family Slot Unlimited Hearts",
+    "price_inr": 179.0,
+    "price_usdt": 2.2
+  },
+  {
+    "id": 20,
+    "name": "Grammarly Premium 1 Year",
+    "description": "Advanced Tone & Grammar Checker",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 21,
+    "name": "Envato Elements 1 Month",
+    "description": "Full Access Unlimited Asset Downloads",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 22,
+    "name": "Freepik Premium 1 Year",
+    "description": "Private Mail Vector & PSD Downloads",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  },
+  {
+    "id": 23,
+    "name": "Claude Pro 1 Month",
+    "description": "Private Access Claude 3.5 Sonnet",
+    "price_inr": 549.0,
+    "price_usdt": 6.5
+  },
+  {
+    "id": 24,
+    "name": "Midjourney Standard 1 Month",
+    "description": "Fast Hours Image Generation Access",
+    "price_inr": 699.0,
+    "price_usdt": 8.5
+  },
+  {
+    "id": 25,
+    "name": "GitHub Student Pack 1 Year",
+    "description": "Developer Mail All Tools Included",
+    "price_inr": 399.0,
+    "price_usdt": 4.8
+  },
+  {
+    "id": 26,
+    "name": "TradingView Premium 1 Month",
+    "description": "All Indicators & Multiple Charts",
+    "price_inr": 299.0,
+    "price_usdt": 3.6
+  },
+  {
+    "id": 27,
+    "name": "LinkedIn Premium 6 Months",
+    "description": "Business Plan InMail & Learning",
+    "price_inr": 799.0,
+    "price_usdt": 9.8
+  },
+  {
+    "id": 28,
+    "name": "Coursera Plus 1 Year",
+    "description": "Certificate Plan Unlimited Courses",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  },
+  {
+    "id": 29,
+    "name": "Skillshare Premium 1 Year",
+    "description": "All Courses Offline Viewing Access",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 30,
+    "name": "Pornhub Premium 1 Year",
+    "description": "Private HD & VR Streaming Plan",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 31,
+    "name": "Surfshark VPN 1 Year",
+    "description": "Unlimited Devices Fast Proxy",
+    "price_inr": 349.0,
+    "price_usdt": 4.2
+  },
+  {
+    "id": 32,
+    "name": "IDM Serial Key Lifetime",
+    "description": "1 PC Lifetime Official License",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 33,
+    "name": "Windows 11 Pro License",
+    "description": "Retail Digital License Key 1 PC",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 34,
+    "name": "MS Office 365 Lifetime",
+    "description": "5 Devices 1TB OneDrive Cloud",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 35,
+    "name": "Discord Nitro 3 Months",
+    "description": "2 Server Boosts & Custom Emojis",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 36,
+    "name": "Steam Random 5x AAA",
+    "description": "5x Premium Global Game Keys",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 37,
+    "name": "PlayStation Plus 1 Month",
+    "description": "Deluxe Trial Catalog & Online Play",
+    "price_inr": 349.0,
+    "price_usdt": 4.2
+  },
+  {
+    "id": 38,
+    "name": "Xbox Game Pass 2 Months",
+    "description": "Ultimate PC and Console Gaming",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 39,
+    "name": "Canva Pro Lifetime",
+    "description": "Student Admin Permanent Invite",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 40,
+    "name": "Perplexity Pro 1 Year",
+    "description": "Pro Search & Multiple AI Models",
+    "price_inr": 599.0,
+    "price_usdt": 7.2
+  },
+  {
+    "id": 41,
+    "name": "QuillBot Premium 1 Year",
+    "description": "Unlimited Paraphraser & Summarizer",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 42,
+    "name": "Turnitin Student 1 Year",
+    "description": "Non-Repository Plagiarism Checker",
+    "price_inr": 399.0,
+    "price_usdt": 4.8
+  },
+  {
+    "id": 43,
+    "name": "ProtonVPN Plus 1 Year",
+    "description": "10 Devices High Speed Secure Core",
+    "price_inr": 399.0,
+    "price_usdt": 4.8
+  },
+  {
+    "id": 44,
+    "name": "IPVanish VPN 1 Year",
+    "description": "Unlimited Devices WireGuard Fast",
+    "price_inr": 299.0,
+    "price_usdt": 3.8
+  },
+  {
+    "id": 45,
+    "name": "Plex Pass Lifetime",
+    "description": "Lifetime Media Slot HW Transcoding",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  },
+  {
+    "id": 46,
+    "name": "SoundCloud Go+ 6 Months",
+    "description": "High Quality Offline Listening",
+    "price_inr": 199.0,
+    "price_usdt": 2.5
+  },
+  {
+    "id": 47,
+    "name": "Deezer Premium 1 Year",
+    "description": "HiFi Audio Stream Ad-Free",
+    "price_inr": 249.0,
+    "price_usdt": 3.0
+  },
+  {
+    "id": 48,
+    "name": "Tidal HiFi Plus 3 Months",
+    "description": "Master Audio Quality FLAC Streaming",
+    "price_inr": 229.0,
+    "price_usdt": 2.8
+  },
+  {
+    "id": 49,
+    "name": "InVideo AI 1 Month",
+    "description": "Creator Pass Script to Video AI",
+    "price_inr": 349.0,
+    "price_usdt": 4.2
+  },
+  {
+    "id": 50,
+    "name": "Runway Gen-2 1 Month",
+    "description": "Video Generation Credit Pass",
+    "price_inr": 499.0,
+    "price_usdt": 6.0
+  }
+]

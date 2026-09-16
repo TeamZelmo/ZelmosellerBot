@@ -31,6 +31,16 @@ def init_db():
             )
         """)
         cur.execute("""
+            CREATE TABLE IF NOT EXISTS product_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                account_data TEXT NOT NULL,
+                is_delivered INTEGER DEFAULT 0,
+                order_id INTEGER,
+                delivered_at TEXT
+            )
+        """)
+        cur.execute("""
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
@@ -90,76 +100,9 @@ def get_user_currency(user_id: int) -> str:
         row = conn.execute("SELECT currency FROM users WHERE user_id = ?", (user_id,)).fetchone()
         return row["currency"] if row and row["currency"] else "INR"
 
-# database.py ke init_db() me ye table add karein:
-"""
-CREATE TABLE IF NOT EXISTS product_accounts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    product_id INTEGER NOT NULL,
-    account_data TEXT NOT NULL,      -- Email:Password ya Key
-    is_delivered INTEGER DEFAULT 0,  -- 0 = fresh, 1 = already sold
-    order_id INTEGER,
-    delivered_at TEXT
-)
-"""
 
-# Aur yeh 3 functions database.py ke end me add karein:
-
-def add_bulk_accounts(product_id: int, accounts_list: list) -> int:
-    """Admin accounts upload karega aur stock auto-update ho jayega"""
-    with get_conn() as conn:
-        added_count = 0
-        for acc in accounts_list:
-            acc = acc.strip()
-            if acc:
-                conn.execute("""
-                    INSERT INTO product_accounts (product_id, account_data, is_delivered)
-                    VALUES (?, ?, 0)
-                """, (product_id, acc))
-                added_count += 1
-        
-        # Product stock ko available fresh accounts ke barabar set karein
-        conn.execute("""
-            UPDATE products 
-            SET stock = (SELECT COUNT(*) FROM product_accounts WHERE product_id = ? AND is_delivered = 0)
-            WHERE id = ?
-        """, (product_id, product_id))
-        return added_count
-
-
-def deliver_account_for_order(product_id: int, order_id: int) -> str:
-    """Payment aate hi fresh account nikal kar delivered mark karega"""
-    with get_conn() as conn:
-        # Ek unused account lock karke select karein
-        row = conn.execute("""
-            SELECT id, account_data FROM product_accounts 
-            WHERE product_id = ? AND is_delivered = 0 
-            LIMIT 1
-        """, (product_id,)).fetchone()
-
-        if not row:
-            return None
-
-        account_id = row["id"]
-        account_data = row["account_data"]
-
-        # Delivered mark karein taaki kisi aur ko na jaye
-        conn.execute("""
-            UPDATE product_accounts 
-            SET is_delivered = 1, order_id = ?, delivered_at = ?
-            WHERE id = ?
-        """, (order_id, datetime.utcnow().isoformat(), account_id))
-
-        # Product stock - 1 karein
-        conn.execute("""
-            UPDATE products 
-            SET stock = (SELECT COUNT(*) FROM product_accounts WHERE product_id = ? AND is_delivered = 0)
-            WHERE id = ?
-        """, (product_id, product_id))
-
-        return account_data
-        
 # ---------------- Products ----------------
-def add_product(name, description, price_inr, price_usdt, image_url="", stock=100):
+def add_product(name, description, price_inr, price_usdt, image_url="", stock=0):
     with get_conn() as conn:
         cur = conn.execute("""
             INSERT INTO products (name, description, price_inr, price_usdt, image_url, stock, active)
@@ -194,9 +137,54 @@ def delete_product(product_id: int) -> bool:
         return cur.rowcount > 0
 
 
-def decrement_stock(product_id, qty=1):
+# ---------------- Digital Accounts Storage & Bulk Delivery ----------------
+def add_bulk_accounts(product_id: int, accounts_list: list) -> int:
     with get_conn() as conn:
-        conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?", (qty, product_id))
+        added = 0
+        for acc in accounts_list:
+            acc = acc.strip()
+            if acc:
+                conn.execute("""
+                    INSERT INTO product_accounts (product_id, account_data, is_delivered)
+                    VALUES (?, ?, 0)
+                """, (product_id, acc))
+                added += 1
+
+        conn.execute("""
+            UPDATE products 
+            SET stock = (SELECT COUNT(*) FROM product_accounts WHERE product_id = ? AND is_delivered = 0)
+            WHERE id = ?
+        """, (product_id, product_id))
+        return added
+
+
+def deliver_accounts_for_order(product_id: int, order_id: int, quantity: int) -> list:
+    with get_conn() as conn:
+        rows = conn.execute("""
+            SELECT id, account_data FROM product_accounts 
+            WHERE product_id = ? AND is_delivered = 0 
+            LIMIT ?
+        """, (product_id, quantity)).fetchall()
+
+        if not rows:
+            return []
+
+        delivered_accounts = []
+        for r in rows:
+            conn.execute("""
+                UPDATE product_accounts 
+                SET is_delivered = 1, order_id = ?, delivered_at = ?
+                WHERE id = ?
+            """, (order_id, datetime.utcnow().isoformat(), r["id"]))
+            delivered_accounts.append(r["account_data"])
+
+        conn.execute("""
+            UPDATE products 
+            SET stock = (SELECT COUNT(*) FROM product_accounts WHERE product_id = ? AND is_delivered = 0)
+            WHERE id = ?
+        """, (product_id, product_id))
+
+        return delivered_accounts
 
 
 # ---------------- Orders ----------------

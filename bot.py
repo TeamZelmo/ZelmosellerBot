@@ -11,7 +11,8 @@ from keyboards import (
     products_keyboard, product_detail_keyboard,
     payment_method_keyboard, check_payment_keyboard
 )
-from payments import razorpay_upi, binance_pay
+import razorpay_upi
+import binance_pay
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

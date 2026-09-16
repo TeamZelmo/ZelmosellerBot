@@ -1,23 +1,23 @@
 from contextlib import contextmanager
 from datetime import datetime
 import sqlite3
-from config import DB_PATH[cite: 4, 5]
+from config import DB_PATH
 
 
 @contextmanager
 def get_conn():
-    conn = sqlite3.connect(DB_PATH)[cite: 5]
-    conn.row_factory = sqlite3.Row[cite: 5]
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     try:
-        yield conn[cite: 5]
-        conn.commit()[cite: 5]
+        yield conn
+        conn.commit()
     finally:
-        conn.close()[cite: 5]
+        conn.close()
 
 
 def init_db():
     with get_conn() as conn:
-        cur = conn.cursor()[cite: 5]
+        cur = conn.cursor()
         cur.execute("""
             CREATE TABLE IF NOT EXISTS products (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,7 +29,7 @@ def init_db():
                 stock INTEGER DEFAULT 0,
                 active INTEGER DEFAULT 1
             )
-        """)[cite: 5]
+        """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS orders (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +45,7 @@ def init_db():
                 created_at TEXT,
                 paid_at TEXT
             )
-        """)[cite: 5]
+        """)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -55,7 +55,7 @@ def init_db():
                 wallet_balance REAL DEFAULT 0.0,
                 joined_at TEXT
             )
-        """)[cite: 5]
+        """)
 
 
 # ---------------- Users ----------------
@@ -67,7 +67,7 @@ def upsert_user(user_id, username, first_name):
             ON CONFLICT(user_id) DO UPDATE SET
                 username = excluded.username,
                 first_name = excluded.first_name
-        """, (user_id, username, first_name, datetime.utcnow().isoformat()))[cite: 5]
+        """, (user_id, username, first_name, datetime.utcnow().isoformat()))
 
 
 def get_user_profile(user_id: int) -> dict:
@@ -97,20 +97,20 @@ def add_product(name, description, price_inr, price_usdt, image_url="", stock=10
         cur = conn.execute("""
             INSERT INTO products (name, description, price_inr, price_usdt, image_url, stock, active)
             VALUES (?, ?, ?, ?, ?, ?, 1)
-        """, (name, description, price_inr, price_usdt, image_url, stock))[cite: 5]
-        return cur.lastrowid[cite: 5]
+        """, (name, description, price_inr, price_usdt, image_url, stock))
+        return cur.lastrowid
 
 
 def get_active_products():
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM products WHERE active = 1 AND stock > 0").fetchall()[cite: 5]
-        return [dict(r) for r in rows][cite: 5]
+        rows = conn.execute("SELECT * FROM products WHERE active = 1 AND stock > 0").fetchall()
+        return [dict(r) for r in rows]
 
 
 def get_product(product_id):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()[cite: 5]
-        return dict(row) if row else None[cite: 5]
+        row = conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+        return dict(row) if row else None
 
 
 def update_product_price(product_id: int, price_inr: float, price_usdt: float) -> bool:
@@ -129,7 +129,7 @@ def delete_product(product_id: int) -> bool:
 
 def decrement_stock(product_id, qty=1):
     with get_conn() as conn:
-        conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?", (qty, product_id))[cite: 5]
+        conn.execute("UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?", (qty, product_id))
 
 
 # ---------------- Orders ----------------
@@ -140,33 +140,33 @@ def create_order(user_id, username, product_id, quantity, amount, currency, paym
                                  payment_method, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)
         """, (user_id, username, product_id, quantity, amount, currency,
-              payment_method, datetime.utcnow().isoformat()))[cite: 5]
-        return cur.lastrowid[cite: 5]
+              payment_method, datetime.utcnow().isoformat()))
+        return cur.lastrowid
 
 
 def set_gateway_order_id(order_id, gateway_order_id):
     with get_conn() as conn:
-        conn.execute("UPDATE orders SET gateway_order_id = ? WHERE id = ?", (gateway_order_id, order_id))[cite: 5]
+        conn.execute("UPDATE orders SET gateway_order_id = ? WHERE id = ?", (gateway_order_id, order_id))
 
 
 def mark_order_paid(gateway_order_id):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM orders WHERE gateway_order_id = ?", (gateway_order_id,)).fetchone()[cite: 5]
+        row = conn.execute("SELECT * FROM orders WHERE gateway_order_id = ?", (gateway_order_id,)).fetchone()
         if not row:
-            return None[cite: 5]
+            return None
         conn.execute("""
             UPDATE orders SET status = 'paid', paid_at = ? WHERE gateway_order_id = ?
-        """, (datetime.utcnow().isoformat(), gateway_order_id))[cite: 5]
-        return dict(row)[cite: 5]
+        """, (datetime.utcnow().isoformat(), gateway_order_id))
+        return dict(row)
 
 
 def get_order(order_id):
     with get_conn() as conn:
-        row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()[cite: 5]
-        return dict(row) if row else None[cite: 5]
+        row = conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+        return dict(row) if row else None
 
 
 def get_user_orders(user_id):
     with get_conn() as conn:
-        rows = conn.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", (user_id,)).fetchall()[cite: 5]
-        return [dict(r) for r in rows][cite: 5]
+        rows = conn.execute("SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC", (user_id,)).fetchall()
+        return [dict(r) for r in rows]

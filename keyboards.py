@@ -1,11 +1,30 @@
+from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.types import InlineKeyboardMarkup
 
 
-def products_keyboard(products: list) -> InlineKeyboardMarkup:
+# ---------------- Persistent Bottom Keyboards ----------------
+def main_bottom_keyboard() -> ReplyKeyboardMarkup:
+    kb = [
+        [KeyboardButton(text="🛍️ Shop"), KeyboardButton(text="📦 Orders")],
+        [KeyboardButton(text="💱 Change Currency")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+
+def currency_bottom_keyboard() -> ReplyKeyboardMarkup:
+    kb = [
+        [KeyboardButton(text="🇮🇳 INR (₹)"), KeyboardButton(text="🪙 USDT ($)")],
+        [KeyboardButton(text="🔙 Back to Menu")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+
+# ---------------- Inline Message Keyboards ----------------
+def products_keyboard(products: list, currency: str = "INR") -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     for p in products:
-        kb.button(text=f"{p['name']} — ₹{p['price_inr']}", callback_data=f"product_{p['id']}")
+        price = f"₹{p['price_inr']}" if currency == "INR" else f"{p['price_usdt']} USDT"
+        kb.button(text=f"{p['name']} — {price}", callback_data=f"product_{p['id']}")
     kb.adjust(1)
     return kb.as_markup()
 
@@ -20,7 +39,7 @@ def product_detail_keyboard(product_id: int) -> InlineKeyboardMarkup:
 
 def payment_method_keyboard(product_id: int) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="💳 Pay with UPI", callback_data=f"pay_upi_{product_id}")
+    kb.button(text="💳 Pay with UPI (INR)", callback_data=f"pay_upi_{product_id}")
     kb.button(text="🪙 Pay with Binance (USDT)", callback_data=f"pay_binance_{product_id}")
     kb.button(text="⬅️ Cancel", callback_data="back_to_catalog")
     kb.adjust(1)

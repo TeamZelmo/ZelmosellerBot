@@ -1,18 +1,25 @@
 import asyncio
+from html import escape
 import logging
+import binance_pay
+import razorpay_upi
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, CallbackQuery, FSInputFile
+from aiogram.enums import ParseMode
+from aiogram.filters import Command, CommandStart
+from aiogram.types import CallbackQuery, LinkPreviewOptions, Message
 
 import config
 import database as db
 from keyboards import (
-    products_keyboard, product_detail_keyboard,
-    payment_method_keyboard, check_payment_keyboard
+    check_payment_keyboard,
+    currency_bottom_keyboard,
+    main_bottom_keyboard,
+    payment_method_keyboard,
+    product_detail_keyboard,
+    products_keyboard,
 )
-import razorpay_upi
-import binance_pay
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,19 +29,20 @@ dp = Dispatcher()
 
 
 # ------------------------------------------------------------------
-# /start
+# /start & Bottom Navigation
 # ------------------------------------------------------------------
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
     db.upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    user_name = escape(message.from_user.first_name or "Grahak")
+    curr = db.get_user_currency(message.from_user.id)
+
     text = (
-        f"👋 Namaste {message.from_user.first_name}!\n\n"
-        "Hamare store mein aapka swagat hai. Neeche products dekhein aur order karein.\n\n"
-        "Commands:\n"
-        "/shop — Products dekhein\n"
-        "/orders — Apne orders dekhein"
+        f"👋 Namaste <b>{user_name}</b>!\n\n"
+        "Hamare store mein aapka swagat hai. Neeche diye gaye buttons se navigate karein.\n\n"
+        f"Current Currency: <b>{curr}</b>"
     )
-    await message.answer(text)
+    await message.answer(text, reply_markup=main_bottom_keyboard(), parse_mode=ParseMode.HTML)
     await show_catalog(message)
 
 
@@ -43,14 +51,17 @@ async def show_catalog(message: Message):
     if not products:
         await message.answer("Abhi koi product available nahi hai. Baad mein try karein.")
         return
-    await message.answer("🛍️ Hamare Products:", reply_markup=products_keyboard(products))
+    curr = db.get_user_currency(message.from_user.id)
+    await message.answer("🛍️ Hamare Products:", reply_markup=products_keyboard(products, curr))
 
 
+@dp.message(F.text == "🛍️ Shop")
 @dp.message(Command("shop"))
 async def cmd_shop(message: Message):
     await show_catalog(message)
 
 
+@dp.message(F.text == "📦 Orders")
 @dp.message(Command("orders"))
 async def cmd_orders(message: Message):
     orders = db.get_user_orders(message.from_user.id)
@@ -60,17 +71,45 @@ async def cmd_orders(message: Message):
     lines = []
     for o in orders[:10]:
         product = db.get_product(o["product_id"])
-        pname = product["name"] if product else "Unknown"
+        pname = escape(product["name"]) if product else "Unknown"
         lines.append(
             f"#{o['id']} — {pname} x{o['quantity']} — "
-            f"{o['amount']} {o['currency']} — {o['status'].upper()}"
+            f"{o['amount']} {o['currency']} — <b>{o['status'].upper()}</b>"
         )
-    await message.answer("📦 Aapke Orders:\n\n" + "\n".join(lines))
+    await message.answer("📦 <b>Aapke Orders:</b>\n\n" + "\n".join(lines), parse_mode=ParseMode.HTML)
 
 
 # ------------------------------------------------------------------
-# Admin: quick add product (simple text command)
-# /addproduct Name | Description | price_inr | price_usdt | stock
+# Currency Change Handlers
+# ------------------------------------------------------------------
+@dp.message(F.text == "💱 Change Currency")
+async def ask_currency(message: Message):
+    current = db.get_user_currency(message.from_user.id)
+    await message.answer(
+        f"Apni preferred currency select karein.\n\nAbhi select hai: <b>{current}</b>",
+        reply_markup=currency_bottom_keyboard(),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+@dp.message(F.text.in_(["🇮🇳 INR (₹)", "🪙 USDT ($)"]))
+async def set_currency(message: Message):
+    new_curr = "INR" if "INR" in message.text else "USDT"
+    db.set_user_currency(message.from_user.id, new_curr)
+    await message.answer(
+        f"✅ Aapki currency badal kar <b>{new_curr}</b> kar di gayi hai!",
+        reply_markup=main_bottom_keyboard(),
+        parse_mode=ParseMode.HTML,
+    )
+
+
+@dp.message(F.text == "🔙 Back to Menu")
+async def back_menu(message: Message):
+    await message.answer("Main menu par wapas aa gaye:", reply_markup=main_bottom_keyboard())
+
+
+# ------------------------------------------------------------------
+# Admin Commands
 # ------------------------------------------------------------------
 @dp.message(Command("addproduct"))
 async def cmd_add_product(message: Message):
@@ -81,17 +120,85 @@ async def cmd_add_product(message: Message):
         raw = message.text.split(" ", 1)[1]
         name, desc, price_inr, price_usdt, stock = [x.strip() for x in raw.split("|")]
         pid = db.add_product(name, desc, float(price_inr), float(price_usdt), stock=int(stock))
-        await message.answer(f"✅ Product added with ID {pid}")
+        await message.answer(f"✅ Product added with ID <code>{pid}</code>", parse_mode=ParseMode.HTML)
     except Exception as e:
         await message.answer(
             "❌ Format galat hai. Use:\n"
-            "/addproduct Name | Description | price_inr | price_usdt | stock\n\n"
-            f"Error: {e}"
+            "<code>/addproduct Name | Description | price_inr | price_usdt | stock</code>\n\n"
+            f"Error: {escape(str(e))}",
+            parse_mode=ParseMode.HTML,
         )
 
 
+@dp.message(Command("delproduct"))
+async def cmd_del_product(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:
+        await message.answer("⛔ Aap admin nahi hain.")
+        return
+    try:
+        parts = message.text.split()
+        if len(parts) < 2:
+            await message.answer("❌ Format: <code>/delproduct &lt;id&gt;</code>", parse_mode=ParseMode.HTML)
+            return
+        product_id = int(parts[1])
+        if db.delete_product(product_id):
+            await message.answer(f"🗑️ Product ID <code>{product_id}</code> hata diya gaya.", parse_mode=ParseMode.HTML)
+        else:
+            await message.answer(f"❌ Product ID <code>{product_id}</code> nahi mila.", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.answer(f"❌ Error: {escape(str(e))}", parse_mode=ParseMode.HTML)
+
+
+@dp.message(Command("setprice"))
+async def cmd_set_price(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:
+        await message.answer("⛔ Aap admin nahi hain.")
+        return
+    try:
+        parts = message.text.split(" ", 1)
+        product_id, price_inr, price_usdt = [x.strip() for x in parts[1].split("|")]
+        if db.update_product_price(int(product_id), float(price_inr), float(price_usdt)):
+            await message.answer(
+                f"✅ Price updated for Product <code>{product_id}</code>: ₹{price_inr} | {price_usdt} USDT",
+                parse_mode=ParseMode.HTML,
+            )
+        else:
+            await message.answer(f"❌ Product ID <code>{product_id}</code> nahi mila.", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.answer(
+            "❌ Format galat hai. Use:\n<code>/setprice &lt;id&gt; | &lt;price_inr&gt; | &lt;price_usdt&gt;</code>",
+            parse_mode=ParseMode.HTML,
+        )
+
+
+@dp.message(Command("bulkadd"))
+async def cmd_bulk_add(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:
+        await message.answer("⛔ Aap admin nahi hain.")
+        return
+    try:
+        parts = message.text.split("\n", 1)
+        if len(parts) < 2:
+            await message.answer(
+                "❌ Format: <code>/bulkadd\\nName | Desc | price_inr | price_usdt | stock</code>",
+                parse_mode=ParseMode.HTML,
+            )
+            return
+
+        lines = [line.strip() for line in parts[1].strip().split("\n") if line.strip()]
+        added = []
+        for line in lines:
+            name, desc, price_inr, price_usdt, stock = [x.strip() for x in line.split("|")]
+            pid = db.add_product(name, desc, float(price_inr), float(price_usdt), stock=int(stock))
+            added.append(f"• ID <code>{pid}</code>: {escape(name)}")
+
+        await message.answer("✅ <b>Products Added:</b>\n\n" + "\n".join(added), parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.answer(f"❌ Error: {escape(str(e))}", parse_mode=ParseMode.HTML)
+
+
 # ------------------------------------------------------------------
-# Product detail view
+# Catalog & Product Details
 # ------------------------------------------------------------------
 @dp.callback_query(F.data.startswith("product_"))
 async def show_product(callback: CallbackQuery):
@@ -101,20 +208,28 @@ async def show_product(callback: CallbackQuery):
         await callback.answer("Product nahi mila.", show_alert=True)
         return
 
+    curr = db.get_user_currency(callback.from_user.id)
+    price_tag = f"₹{product['price_inr']}" if curr == "INR" else f"{product['price_usdt']} USDT"
+
     text = (
-        f"🛍️ *{product['name']}*\n\n"
-        f"{product['description']}\n\n"
-        f"💰 Price: ₹{product['price_inr']}  |  {product['price_usdt']} USDT\n"
-        f"📦 Stock: {product['stock']}"
+        f"🛍️ <b>{escape(product['name'])}</b>\n\n"
+        f"{escape(product['description'])}\n\n"
+        f"💰 <b>Price:</b> {price_tag}\n"
+        f"📦 <b>Stock:</b> {product['stock']}"
     )
-    await callback.message.edit_text(text, reply_markup=product_detail_keyboard(product_id), parse_mode="Markdown")
+    await callback.message.edit_text(
+        text,
+        reply_markup=product_detail_keyboard(product_id),
+        parse_mode=ParseMode.HTML,
+    )
     await callback.answer()
 
 
 @dp.callback_query(F.data == "back_to_catalog")
 async def back_to_catalog(callback: CallbackQuery):
     products = db.get_active_products()
-    await callback.message.edit_text("🛍️ Hamare Products:", reply_markup=products_keyboard(products))
+    curr = db.get_user_currency(callback.from_user.id)
+    await callback.message.edit_text("🛍️ Hamare Products:", reply_markup=products_keyboard(products, curr))
     await callback.answer()
 
 
@@ -123,10 +238,15 @@ async def choose_payment_method(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[1])
     product = db.get_product(product_id)
     if not product or product["stock"] <= 0:
-        await callback.answer("Yeh product abhi available nahi hai.", show_alert=True)
+        await callback.answer("Yeh product out of stock hai.", show_alert=True)
         return
-    text = f"*{product['name']}* ke liye payment method choose karein:"
-    await callback.message.edit_text(text, reply_markup=payment_method_keyboard(product_id), parse_mode="Markdown")
+
+    text = f"<b>{escape(product['name'])}</b> ke liye payment method choose karein:"
+    await callback.message.edit_text(
+        text,
+        reply_markup=payment_method_keyboard(product_id),
+        parse_mode=ParseMode.HTML,
+    )
     await callback.answer()
 
 
@@ -137,8 +257,8 @@ async def choose_payment_method(callback: CallbackQuery):
 async def pay_with_upi(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[2])
     product = db.get_product(product_id)
-    if not product:
-        await callback.answer("Product nahi mila.", show_alert=True)
+    if not product or product["stock"] <= 0:
+        await callback.answer("Yeh product out of stock ho chuka hai.", show_alert=True)
         return
 
     order_id = db.create_order(
@@ -157,25 +277,27 @@ async def pay_with_upi(callback: CallbackQuery):
             amount_inr=product["price_inr"],
             description=product["name"],
             customer_name=callback.from_user.full_name,
-            callback_url=f"{config.PUBLIC_BASE_URL}/razorpay/callback",
+            callback_url=f"{config.PUBLIC_BASE_URL}/webhook/razorpay",
         )
         db.set_gateway_order_id(order_id, link["id"])
 
         text = (
-            f"💳 *UPI Payment*\n\n"
-            f"Product: {product['name']}\n"
+            f"💳 <b>UPI Payment</b>\n\n"
+            f"Product: {escape(product['name'])}\n"
             f"Amount: ₹{product['price_inr']}\n\n"
-            f"Neeche diye link par pay karein (GPay/PhonePe/Paytm sab chalega):\n"
+            f"Neeche diye link par pay karein (GPay/PhonePe/Paytm):\n"
             f"{link['short_url']}\n\n"
             f"Payment ke baad neeche button dabayein."
         )
         await callback.message.edit_text(
-            text, reply_markup=check_payment_keyboard(order_id),
-            parse_mode="Markdown", disable_web_page_preview=True
+            text,
+            reply_markup=check_payment_keyboard(order_id),
+            parse_mode=ParseMode.HTML,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except Exception as e:
         logger.exception("Razorpay error")
-        await callback.message.edit_text(f"❌ Payment link banane mein error aaya: {e}")
+        await callback.message.edit_text(f"❌ Payment link error: {escape(str(e))}")
     await callback.answer()
 
 
@@ -186,8 +308,8 @@ async def pay_with_upi(callback: CallbackQuery):
 async def pay_with_binance(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[2])
     product = db.get_product(product_id)
-    if not product:
-        await callback.answer("Product nahi mila.", show_alert=True)
+    if not product or product["stock"] <= 0:
+        await callback.answer("Yeh product out of stock ho chuka hai.", show_alert=True)
         return
 
     order_id = db.create_order(
@@ -208,33 +330,33 @@ async def pay_with_binance(callback: CallbackQuery):
             goods_name=product["name"],
         )
         if result.get("status") != "SUCCESS":
-            raise Exception(result.get("errorMessage", "Unknown Binance error"))
+            raise Exception(result.get("errorMessage", "Binance error"))
 
         data = result["data"]
-        prepay_id = data["prepayId"]
-        checkout_url = data["checkoutUrl"]
-        db.set_gateway_order_id(order_id, prepay_id)
+        db.set_gateway_order_id(order_id, data["prepayId"])
 
         text = (
-            f"🪙 *Binance Pay Payment*\n\n"
-            f"Product: {product['name']}\n"
+            f"🪙 <b>Binance Pay Payment</b>\n\n"
+            f"Product: {escape(product['name'])}\n"
             f"Amount: {product['price_usdt']} USDT\n\n"
             f"Neeche diye link par pay karein Binance app se:\n"
-            f"{checkout_url}\n\n"
+            f"{data['checkoutUrl']}\n\n"
             f"Payment ke baad neeche button dabayein."
         )
         await callback.message.edit_text(
-            text, reply_markup=check_payment_keyboard(order_id),
-            parse_mode="Markdown", disable_web_page_preview=True
+            text,
+            reply_markup=check_payment_keyboard(order_id),
+            parse_mode=ParseMode.HTML,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
         )
     except Exception as e:
         logger.exception("Binance Pay error")
-        await callback.message.edit_text(f"❌ Payment link banane mein error aaya: {e}")
+        await callback.message.edit_text(f"❌ Payment link error: {escape(str(e))}")
     await callback.answer()
 
 
 # ------------------------------------------------------------------
-# Check payment status (manual trigger; webhook auto-updates DB in background)
+# Verification & Webhook Notifications
 # ------------------------------------------------------------------
 @dp.callback_query(F.data.startswith("check_"))
 async def check_status(callback: CallbackQuery):
@@ -246,40 +368,29 @@ async def check_status(callback: CallbackQuery):
 
     if order["status"] == "paid":
         product = db.get_product(order["product_id"])
+        pname = escape(product["name"]) if product else "Unknown"
         await callback.message.edit_text(
-            f"✅ Payment successful!\n\n"
-            f"Order #{order_id} — {product['name']}\n"
-            f"Aapka order confirm ho gaya hai. Dhanyawad! 🙏"
+            f"✅ <b>Payment successful!</b>\n\n"
+            f"Order #{order_id} — {pname}\n"
+            f"Aapka order confirm ho gaya hai. Dhanyawad! 🙏",
+            parse_mode=ParseMode.HTML,
         )
     else:
         await callback.answer("⏳ Payment abhi pending hai. Thodi der baad try karein.", show_alert=True)
 
 
-# ------------------------------------------------------------------
-# This function is called by webhook_server.py when a payment succeeds,
-# so the bot can proactively message the user.
-# ------------------------------------------------------------------
 async def notify_payment_success(order: dict):
     product = db.get_product(order["product_id"])
+    pname = escape(product["name"]) if product else "Item"
     db.decrement_stock(order["product_id"], order["quantity"])
     try:
         await bot.send_message(
             order["user_id"],
-            f"✅ *Payment Received!*\n\n"
-            f"Order #{order['id']} — {product['name']}\n"
+            f"✅ <b>Payment Received!</b>\n\n"
+            f"Order #{order['id']} — {pname}\n"
             f"Amount: {order['amount']} {order['currency']}\n\n"
             f"Aapka order confirm ho gaya hai. Dhanyawad! 🙏",
-            parse_mode="Markdown"
+            parse_mode=ParseMode.HTML,
         )
     except Exception:
-        logger.exception("Failed to notify user")
-
-
-async def main():
-    db.init_db()
-    logger.info("Bot starting...")
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        logger.exception("Failed to notify user %s", order.get("user_id"))

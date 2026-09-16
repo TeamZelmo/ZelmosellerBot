@@ -187,6 +187,54 @@ def deliver_accounts_for_order(product_id: int, order_id: int, quantity: int) ->
         return delivered_accounts
 
 
+# ---------------- GitHub Sync Methods ----------------
+def sync_products_from_list(products_data: list) -> int:
+    with get_conn() as conn:
+        count = 0
+        for p in products_data:
+            conn.execute("""
+                INSERT INTO products (id, name, description, price_inr, price_usdt, stock, active)
+                VALUES (?, ?, ?, ?, ?, 0, 1)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    description = excluded.description,
+                    price_inr = excluded.price_inr,
+                    price_usdt = excluded.price_usdt
+            """, (p["id"], p["name"], p["description"], float(p["price_inr"]), float(p["price_usdt"])))
+            count += 1
+        return count
+
+
+def sync_stock_from_list(stock_data: list) -> int:
+    with get_conn() as conn:
+        total_added = 0
+        for item in stock_data:
+            pid = item.get("product_id")
+            for acc in item.get("accounts", []):
+                acc = acc.strip()
+                if not acc:
+                    continue
+                exists = conn.execute("""
+                    SELECT 1 FROM product_accounts 
+                    WHERE product_id = ? AND account_data = ?
+                """, (pid, acc)).fetchone()
+
+                if not exists:
+                    conn.execute("""
+                        INSERT INTO product_accounts (product_id, account_data, is_delivered)
+                        VALUES (?, ?, 0)
+                    """, (pid, acc))
+                    total_added += 1
+
+            conn.execute("""
+                UPDATE products 
+                SET stock = (SELECT COUNT(*) FROM product_accounts WHERE product_id = ? AND is_delivered = 0)
+                WHERE id = ?
+            """, (pid, pid))
+
+        return total_added
+
+
 # ---------------- Orders ----------------
 def create_order(user_id, username, product_id, quantity, amount, currency, payment_method):
     with get_conn() as conn:

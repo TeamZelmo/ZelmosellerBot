@@ -1,0 +1,49 @@
+"""
+Yeh single entrypoint hai jo:
+1. Telegram bot ko polling mode mein chalata hai
+2. FastAPI webhook server ko chalata hai (Razorpay/Binance payment confirmations ke liye)
+
+Dono ek hi asyncio event loop mein chalte hain, isliye webhook aane par bot
+seedha user ko message bhej sakta hai (koi extra queue/thread ki zaroorat nahi).
+
+Run: python main.py
+"""
+import asyncio
+import logging
+import uvicorn
+
+import config
+import database as db
+import bot as bot_module
+from webhook_server import app as webhook_app
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+async def run_bot():
+    await bot_module.dp.start_polling(bot_module.bot)
+
+
+async def run_webhook_server():
+    server_config = uvicorn.Config(
+        webhook_app,
+        host="0.0.0.0",
+        port=config.WEBHOOK_SERVER_PORT,
+        log_level="info",
+    )
+    server = uvicorn.Server(server_config)
+    await server.serve()
+
+
+async def main():
+    db.init_db()
+    logger.info("Starting bot + webhook server together...")
+    await asyncio.gather(
+        run_bot(),
+        run_webhook_server(),
+    )
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

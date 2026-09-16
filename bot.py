@@ -1,8 +1,7 @@
 import asyncio
 from html import escape
 import logging
-import binance_pay
-import razorpay_upi
+import requests
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.enums import ParseMode
@@ -18,9 +17,9 @@ from keyboards import (
     payment_method_bottom_keyboard,
     products_keyboard,
     profile_popup_keyboard,
-    quantity_inline_keyboard,
+    quantity_bottom_keyboard,
 )
-
+from payments import binance_pay, razorpay_upi
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ dp = Dispatcher()
 
 
 # ------------------------------------------------------------------
-# /start & Catalog Navigation
+# /start & Main Navigation
 # ------------------------------------------------------------------
 @dp.message(CommandStart())
 async def cmd_start(message: Message):
@@ -92,8 +91,8 @@ async def cmd_user_help(message: Message):
     text = (
         "📖 <b>User Guide:</b>\n\n"
         "• <code>/shop</code> se products catalog open karein.\n"
-        "• Product select karne ke baad <b>➖</b> aur <b>➕</b> se quantity set karein.\n"
-        "• Payment confirm hone par accounts turant chat mein deliver kar diye jayenge."
+        "• Product select karne ke baad screen ke **neeche wale buttons** (➖ aur ➕) se quantity adjust karein.\n"
+        "• Quantity confirm karke payment method choose karein. Payment hone par account turant yahin deliver ho jayega."
     )
     await message.answer(text, parse_mode=ParseMode.HTML)
 
@@ -106,10 +105,16 @@ async def cmd_admin_help(message: Message):
 
     text = (
         "🛠️ <b>Admin Commands:</b>\n\n"
-        "➕ <b>Product Create:</b>\n"
+        "➕ <b>Product Add:</b>\n"
         "<code>/addproduct Name | Description | price_inr | price_usdt</code>\n\n"
+        "📦 <b>Bulk Products Add:</b>\n"
+        "<code>/bulkadd\n"
+        "Item 1 | Desc | inr | usdt\n"
+        "Item 2 | Desc | inr | usdt</code>\n\n"
         "📥 <b>Stock Upload (Accounts):</b>\n"
         "<code>/addstock &lt;id&gt;\nemail1:pass1\nemail2:pass2</code>\n\n"
+        "🔄 <b>GitHub Sync:</b>\n"
+        "<code>/syncgithub</code> (JSON files direct repo se sync karta hai)\n\n"
         "✏️ <code>/setprice &lt;id&gt; | &lt;inr&gt; | &lt;usdt&gt;</code>\n"
         "🗑️ <code>/delproduct &lt;id&gt;</code>"
     )
@@ -121,7 +126,7 @@ async def cmd_admin_help(message: Message):
 # ------------------------------------------------------------------
 @dp.message(F.text.in_(["👤 Profile", "profile"]))
 async def handle_profile(message: Message):
-    await message.answer("Neeche button dabakar apni profile pop-up window mein dekhein:", reply_markup=profile_popup_keyboard())
+    await message.answer("Neeche button dabakar profile window open karein:", reply_markup=profile_popup_keyboard())
 
 
 @dp.callback_query(F.data == "show_profile_popup")
@@ -156,7 +161,7 @@ async def handle_support(message: Message):
 @dp.message(F.text == "💱 Change Currency")
 async def ask_currency(message: Message):
     current = db.get_user_currency(message.from_user.id)
-    await message.answer(f"Preferred currency choose karein. Abhi select hai: <b>{current}</b>", reply_markup=currency_bottom_keyboard(), parse_mode=ParseMode.HTML)
+    await message.answer(f"Preferred currency choose karein. Abhi: <b>{current}</b>", reply_markup=currency_bottom_keyboard(), parse_mode=ParseMode.HTML)
 
 
 @dp.message(F.text.in_(["🇮🇳 INR (₹)", "🪙 USDT ($)"]))
@@ -168,11 +173,11 @@ async def set_currency(message: Message):
 
 @dp.message(F.text == "🔙 Back to Menu")
 async def back_menu(message: Message):
-    await message.answer("Main menu:", reply_markup=main_bottom_keyboard())
+    await message.answer("Main menu par wapas aa gaye:", reply_markup=main_bottom_keyboard())
 
 
 # ------------------------------------------------------------------
-# Admin Commands
+# Admin Commands & GitHub Sync
 # ------------------------------------------------------------------
 @dp.message(Command("addproduct"))
 async def cmd_add_product(message: Message):
@@ -183,12 +188,32 @@ async def cmd_add_product(message: Message):
         raw = message.text.split(" ", 1)[1]
         name, desc, price_inr, price_usdt = [x.strip() for x in raw.split("|")]
         pid = db.add_product(name, desc, float(price_inr), float(price_usdt), stock=0)
-        await message.answer(
-            f"✅ Product created with ID <code>{pid}</code>.\nAb accounts add karne ke liye <code>/addstock {pid}</code> bhejein.",
-            parse_mode=ParseMode.HTML
-        )
+        await message.answer(f"✅ Product created with ID <code>{pid}</code>. Accounts upload karne ke liye <code>/addstock {pid}</code> use karein.", parse_mode=ParseMode.HTML)
     except Exception as e:
         await message.answer("❌ Format: <code>/addproduct Name | Desc | inr | usdt</code>", parse_mode=ParseMode.HTML)
+
+
+@dp.message(Command("bulkadd"))
+async def cmd_bulk_add(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:
+        await message.answer("⛔ Aap admin nahi hain.")
+        return
+    try:
+        parts = message.text.split("\n", 1)
+        if len(parts) < 2:
+            await message.answer("❌ Format:\n<code>/bulkadd\nName | Desc | inr | usdt</code>", parse_mode=ParseMode.HTML)
+            return
+
+        lines = [line.strip() for line in parts[1].strip().split("\n") if line.strip()]
+        added = []
+        for line in lines:
+            name, desc, price_inr, price_usdt = [x.strip() for x in line.split("|")]
+            pid = db.add_product(name, desc, float(price_inr), float(price_usdt), stock=0)
+            added.append(f"• ID <code>{pid}</code>: <b>{escape(name)}</b>")
+
+        await message.answer("✅ <b>Products Created:</b>\n\n" + "\n".join(added), parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.answer(f"❌ Error: {escape(str(e))}")
 
 
 @dp.message(Command("addstock"))
@@ -196,24 +221,44 @@ async def cmd_add_stock(message: Message):
     if message.from_user.id not in config.ADMIN_IDS:
         await message.answer("⛔ Aap admin nahi hain.")
         return
-
     try:
         parts = message.text.split("\n", 1)
         product_id = int(parts[0].strip().split()[1])
         product = db.get_product(product_id)
         if not product:
-            await message.answer("❌ Product ID nahi mili.")
+            await message.answer("❌ Product nahi mila.")
             return
 
         accounts = [x.strip() for x in parts[1].strip().split("\n") if x.strip()]
         added = db.add_bulk_accounts(product_id, accounts)
         fresh_product = db.get_product(product_id)
-        await message.answer(
-            f"✅ <b>Accounts Added!</b>\nProduct: <b>{escape(product['name'])}</b>\nNaye added: <code>{added}</code>\nTotal Fresh Stock: <code>{fresh_product['stock']}</code>",
+        await message.answer(f"✅ Product <b>{escape(product['name'])}</b> me <code>{added}</code> accounts add hue. Total stock: <code>{fresh_product['stock']}</code>", parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await message.answer(f"❌ Error: {escape(str(e))}")
+
+
+@dp.message(Command("syncgithub"))
+async def cmd_sync_github(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:
+        await message.answer("⛔ Aap admin nahi hain.")
+        return
+
+    status_msg = await message.answer("🔄 <i>GitHub se data fetch ho raha hai...</i>", parse_mode=ParseMode.HTML)
+    try:
+        prod_resp = requests.get(config.GITHUB_PRODUCTS_URL, timeout=10)
+        synced_prods = db.sync_products_from_list(prod_resp.json()) if prod_resp.status_code == 200 else 0
+
+        stock_resp = requests.get(config.GITHUB_STOCK_URL, timeout=10)
+        synced_stock = db.sync_stock_from_list(stock_resp.json()) if stock_resp.status_code == 200 else 0
+
+        await status_msg.edit_text(
+            f"✅ <b>GitHub Sync Complete!</b>\n\n"
+            f"📦 Products Synced: <code>{synced_prods}</code>\n"
+            f"🔑 Accounts Added: <code>{synced_stock}</code>",
             parse_mode=ParseMode.HTML
         )
     except Exception as e:
-        await message.answer(f"❌ Error: {escape(str(e))}")
+        await status_msg.edit_text(f"❌ Sync Error: {escape(str(e))}")
 
 
 @dp.message(Command("delproduct"))
@@ -225,9 +270,9 @@ async def cmd_del_product(message: Message):
         parts = message.text.split()
         product_id = int(parts[1])
         if db.delete_product(product_id):
-            await message.answer(f"🗑️ Product ID <code>{product_id}</code> delete ho gaya.", parse_mode=ParseMode.HTML)
+            await message.answer(f"🗑️ Product #{product_id} deleted.", parse_mode=ParseMode.HTML)
         else:
-            await message.answer(f"❌ Product ID <code>{product_id}</code> nahi mila.", parse_mode=ParseMode.HTML)
+            await message.answer("❌ Product nahi mila.")
     except Exception as e:
         await message.answer(f"❌ Error: {escape(str(e))}")
 
@@ -243,13 +288,13 @@ async def cmd_set_price(message: Message):
         if db.update_product_price(int(product_id), float(price_inr), float(price_usdt)):
             await message.answer(f"✅ Price updated for Product #{product_id}!", parse_mode=ParseMode.HTML)
         else:
-            await message.answer(f"❌ Product ID <code>{product_id}</code> nahi mila.", parse_mode=ParseMode.HTML)
+            await message.answer("❌ Product nahi mila.")
     except Exception as e:
         await message.answer(f"❌ Error: {escape(str(e))}")
 
 
 # ------------------------------------------------------------------
-# Live Quantity Controller (- / +)
+# Catalog Click -> Opens Bottom Quantity Selector
 # ------------------------------------------------------------------
 @dp.callback_query(F.data.startswith("product_"))
 async def show_product_qty(callback: CallbackQuery):
@@ -262,138 +307,131 @@ async def show_product_qty(callback: CallbackQuery):
     curr = db.get_user_currency(callback.from_user.id)
     price_tag = f"₹{product['price_inr']}" if curr == "INR" else f"{product['price_usdt']} USDT"
     initial_qty = 1
-    total_tag = f"₹{round(product['price_inr'] * initial_qty, 2)}" if curr == "INR" else f"{round(product['price_usdt'] * initial_qty, 2)} USDT"
+    total_val = round((product['price_inr'] if curr == 'INR' else product['price_usdt']) * initial_qty, 2)
+    total_tag = f"₹{total_val}" if curr == "INR" else f"{total_val} USDT"
 
     text = (
         f"🛍️ <b>{escape(product['name'])}</b>\n\n"
         f"{escape(product['description'])}\n\n"
         f"💰 <b>Rate:</b> {price_tag} per account\n"
-        f"📦 <b>Stock Available:</b> {product['stock']}\n\n"
-        f"🔢 <b>Quantity:</b> <code>{initial_qty}</code>\n"
-        f"💵 <b>Total Amount:</b> <b>{total_tag}</b>"
+        f"📦 <b>Stock:</b> {product['stock']}\n\n"
+        f"🔢 <b>Selected Quantity:</b> <code>{initial_qty}</code>\n"
+        f"💵 <b>Total Amount:</b> <b>{total_tag}</b>\n\n"
+        "👇 <i>Neeche diye gaye <b>➖ / ➕</b> buttons se quantity badhayein ya ghatayein:</i>"
     )
-    await callback.message.edit_text(
-        text,
-        reply_markup=quantity_inline_keyboard(product_id, initial_qty, product["stock"]),
-        parse_mode=ParseMode.HTML
-    )
-    await callback.answer()
-
-
-@dp.callback_query(F.data.startswith("qty_dec_"))
-async def decrease_quantity(callback: CallbackQuery):
-    _, _, product_id_str, current_qty_str = callback.data.split("_")
-    product_id = int(product_id_str)
-    current_qty = int(current_qty_str)
-
-    if current_qty <= 1:
-        await callback.answer("Minimum 1 item required.", show_alert=True)
-        return
-
-    new_qty = current_qty - 1
-    product = db.get_product(product_id)
-    curr = db.get_user_currency(callback.from_user.id)
-    price_tag = f"₹{product['price_inr']}" if curr == "INR" else f"{product['price_usdt']} USDT"
-    total_tag = f"₹{round(product['price_inr'] * new_qty, 2)}" if curr == "INR" else f"{round(product['price_usdt'] * new_qty, 2)} USDT"
-
-    text = (
-        f"🛍️ <b>{escape(product['name'])}</b>\n\n"
-        f"{escape(product['description'])}\n\n"
-        f"💰 <b>Rate:</b> {price_tag} per account\n"
-        f"📦 <b>Stock Available:</b> {product['stock']}\n\n"
-        f"🔢 <b>Quantity:</b> <code>{new_qty}</code>\n"
-        f"💵 <b>Total Amount:</b> <b>{total_tag}</b>"
-    )
-    await callback.message.edit_text(
-        text,
-        reply_markup=quantity_inline_keyboard(product_id, new_qty, product["stock"]),
-        parse_mode=ParseMode.HTML
-    )
-    await callback.answer()
-
-
-@dp.callback_query(F.data.startswith("qty_inc_"))
-async def increase_quantity(callback: CallbackQuery):
-    _, _, product_id_str, current_qty_str, stock_str = callback.data.split("_")
-    product_id = int(product_id_str)
-    current_qty = int(current_qty_str)
-    max_stock = int(stock_str)
-
-    if current_qty >= max_stock:
-        await callback.answer(f"Stock limit reach! Sirf {max_stock} available hain.", show_alert=True)
-        return
-
-    new_qty = current_qty + 1
-    product = db.get_product(product_id)
-    curr = db.get_user_currency(callback.from_user.id)
-    price_tag = f"₹{product['price_inr']}" if curr == "INR" else f"{product['price_usdt']} USDT"
-    total_tag = f"₹{round(product['price_inr'] * new_qty, 2)}" if curr == "INR" else f"{round(product['price_usdt'] * new_qty, 2)} USDT"
-
-    text = (
-        f"🛍️ <b>{escape(product['name'])}</b>\n\n"
-        f"{escape(product['description'])}\n\n"
-        f"💰 <b>Rate:</b> {price_tag} per account\n"
-        f"📦 <b>Stock Available:</b> {product['stock']}\n\n"
-        f"🔢 <b>Quantity:</b> <code>{new_qty}</code>\n"
-        f"💵 <b>Total Amount:</b> <b>{total_tag}</b>"
-    )
-    await callback.message.edit_text(
-        text,
-        reply_markup=quantity_inline_keyboard(product_id, new_qty, product["stock"]),
-        parse_mode=ParseMode.HTML
-    )
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "qty_noop")
-async def noop_qty(callback: CallbackQuery):
-    await callback.answer()
-
-
-@dp.callback_query(F.data == "back_to_catalog")
-async def back_to_catalog(callback: CallbackQuery):
-    products = db.get_active_products()
-    curr = db.get_user_currency(callback.from_user.id)
-    await callback.message.edit_text(
-        "🛍️ <b>Hamare Products:</b>\nNeeche kisi product par click karein:",
-        reply_markup=products_keyboard(products, curr),
-        parse_mode=ParseMode.HTML
-    )
-    await callback.answer()
-
-
-@dp.callback_query(F.data.startswith("qty_confirm_"))
-async def confirm_quantity(callback: CallbackQuery):
-    _, _, product_id_str, qty_str = callback.data.split("_")
-    product_id = int(product_id_str)
-    quantity = int(qty_str)
-
-    product = db.get_product(product_id)
-    if not product or product["stock"] < quantity:
-        await callback.answer("Stock available nahi hai.", show_alert=True)
-        return
-
-    curr = db.get_user_currency(callback.from_user.id)
-    total_cost = round((product["price_inr"] if curr == "INR" else product["price_usdt"]) * quantity, 2)
-    total_str = f"₹{total_cost}" if curr == "INR" else f"{total_cost} USDT"
-
-    text = (
-        f"🛒 <b>Order Summary:</b>\n\n"
-        f"Product: <b>{escape(product['name'])}</b>\n"
-        f"Quantity: <code>{quantity}</code>\n"
-        f"Total: <b>{total_str}</b>\n\n"
-        "👇 <i>Neeche diye gaye buttons se payment method select karein:</i>"
-    )
+    # Screen ke neeche Reply Keyboard bhejein
     await callback.message.answer(
         text,
-        reply_markup=payment_method_bottom_keyboard(product_id, quantity),
+        reply_markup=quantity_bottom_keyboard(product_id, initial_qty),
         parse_mode=ParseMode.HTML
     )
     await callback.answer()
 
 
 # ------------------------------------------------------------------
-# Payment Handlers
+# Bottom Keyboard Quantity Minus / Plus / Confirm Handlers
+# ------------------------------------------------------------------
+@dp.message(F.text.startswith("➖ Dec #"))
+async def decrease_qty_bottom(message: Message):
+    try:
+        raw = message.text.replace("➖ Dec #", "")
+        product_id_str, current_qty_str = raw.split("_")
+        product_id = int(product_id_str)
+        current_qty = int(current_qty_str)
+
+        if current_qty <= 1:
+            await message.answer("⚠️ Minimum quantity 1 honi chahiye.")
+            return
+
+        new_qty = current_qty - 1
+        product = db.get_product(product_id)
+        curr = db.get_user_currency(message.from_user.id)
+        unit_price = product['price_inr'] if curr == 'INR' else product['price_usdt']
+        total_str = f"₹{round(unit_price * new_qty, 2)}" if curr == 'INR' else f"{round(unit_price * new_qty, 2)} USDT"
+
+        await message.answer(
+            f"🛍️ <b>{escape(product['name'])}</b>\n"
+            f"🔢 Quantity: <code>{new_qty}</code>\n"
+            f"💵 Total: <b>{total_str}</b>\n\n"
+            "Neeche buttons se aur change karein ya Confirm dabayein:",
+            reply_markup=quantity_bottom_keyboard(product_id, new_qty),
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await message.answer(f"❌ Error: {e}")
+
+
+@dp.message(F.text.startswith("➕ Inc #"))
+async def increase_qty_bottom(message: Message):
+    try:
+        raw = message.text.replace("➕ Inc #", "")
+        product_id_str, current_qty_str = raw.split("_")
+        product_id = int(product_id_str)
+        current_qty = int(current_qty_str)
+
+        product = db.get_product(product_id)
+        if current_qty >= product["stock"]:
+            await message.answer(f"⚠️ Stock limit reach! Sirf {product['stock']} accounts bache hain.")
+            return
+
+        new_qty = current_qty + 1
+        curr = db.get_user_currency(message.from_user.id)
+        unit_price = product['price_inr'] if curr == 'INR' else product['price_usdt']
+        total_str = f"₹{round(unit_price * new_qty, 2)}" if curr == 'INR' else f"{round(unit_price * new_qty, 2)} USDT"
+
+        await message.answer(
+            f"🛍️ <b>{escape(product['name'])}</b>\n"
+            f"🔢 Quantity: <code>{new_qty}</code>\n"
+            f"💵 Total: <b>{total_str}</b>\n\n"
+            "Neeche buttons se aur change karein ya Confirm dabayein:",
+            reply_markup=quantity_bottom_keyboard(product_id, new_qty),
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await message.answer(f"❌ Error: {e}")
+
+
+@dp.message(F.text.startswith("📦 Qty: "))
+async def show_current_qty_info(message: Message):
+    await message.answer("Yeh aapki current quantity hai. ➖ ya ➕ dabakar badlein.")
+
+
+@dp.message(F.text.startswith("✅ Confirm #"))
+async def confirm_checkout_bottom(message: Message):
+    try:
+        raw = message.text.replace("✅ Confirm #", "")
+        product_id_str, qty_str = raw.split("_")
+        product_id = int(product_id_str)
+        quantity = int(qty_str)
+
+        product = db.get_product(product_id)
+        if not product or product["stock"] < quantity:
+            await message.answer("Stock kam ho chuka hai, catalog se dobara try karein.", reply_markup=main_bottom_keyboard())
+            return
+
+        curr = db.get_user_currency(message.from_user.id)
+        unit_price = product["price_inr"] if curr == "INR" else product["price_usdt"]
+        total_cost = round(unit_price * quantity, 2)
+        total_str = f"₹{total_cost}" if curr == "INR" else f"{total_cost} USDT"
+
+        text = (
+            f"📦 <b>Order Summary:</b>\n\n"
+            f"Product: <b>{escape(product['name'])}</b>\n"
+            f"Total Quantity: <code>{quantity}</code>\n"
+            f"Payable Amount: <b>{total_str}</b>\n\n"
+            "👇 <i>Neeche diye gaye buttons se payment method select karein:</i>"
+        )
+        await message.answer(
+            text,
+            reply_markup=payment_method_bottom_keyboard(product_id, quantity),
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await message.answer(f"❌ Error: {e}")
+
+
+# ------------------------------------------------------------------
+# Payment Handlers (UPI & Binance)
 # ------------------------------------------------------------------
 @dp.message(F.text.startswith("💳 Pay UPI #"))
 async def pay_upi_handler(message: Message):
@@ -433,7 +471,7 @@ async def pay_upi_handler(message: Message):
             f"Product: {escape(product['name'])}\n"
             f"Quantity: {quantity}\n"
             f"Total Amount: ₹{total_inr}\n\n"
-            f"Neeche diye link par click karke pay karein:\n{link['short_url']}\n\n"
+            f"Neeche diye link par pay karein (GPay/PhonePe/Paytm):\n{link['short_url']}\n\n"
             f"Payment ke baad status check karein, accounts yahin milenge."
         )
         await message.answer(

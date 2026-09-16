@@ -27,9 +27,9 @@ WEBHOOK_SERVER_PORT = int(os.getenv("WEBHOOK_SERVER_PORT", "8000"))
 # ---------- GitHub Raw File URLs (for /syncgithub) ----------
 GITHUB_PRODUCTS_URL = os.getenv(
     "GITHUB_PRODUCTS_URL",
-    "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/products.json"
+    "https://github.com/TeamZelmo/ZelmosellerBot/blob/main/products.json"
 )
 GITHUB_STOCK_URL = os.getenv(
     "GITHUB_STOCK_URL",
-    "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/stock.json"
+    "https://github.com/TeamZelmo/ZelmosellerBot/blob/main/stock.json"
 )

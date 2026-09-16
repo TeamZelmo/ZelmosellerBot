@@ -1,0 +1,17 @@
+[
+  {
+    "product_id": 1,
+    "accounts": [
+      "netflixuser1@gmail.com:pass123",
+      "netflixuser2@gmail.com:pass456",
+      "netflixuser3@gmail.com:pass789"
+    ]
+  },
+  {
+    "product_id": 2,
+    "accounts": [
+      "chatgpt1@gmail.com:gptpass1",
+      "chatgpt2@gmail.com:gptpass2"
+    ]
+  }
+]

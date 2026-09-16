@@ -21,10 +21,15 @@ BINANCE_PAY_API_SECRET = os.getenv("BINANCE_PAY_API_SECRET", "")
 BINANCE_PAY_BASE_URL = "https://bpay.binanceapi.com"
 
 # ---------- Webhook server ----------
-# Public HTTPS URL jahan Razorpay/Binance webhooks bhejenge
-# Example: https://yourdomain.com
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "http://localhost:8000")
 WEBHOOK_SERVER_PORT = int(os.getenv("WEBHOOK_SERVER_PORT", "8000"))
 
-# Currency
-CURRENCY = "INR"
+# ---------- GitHub Raw File URLs (for /syncgithub) ----------
+GITHUB_PRODUCTS_URL = os.getenv(
+    "GITHUB_PRODUCTS_URL",
+    "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/products.json"
+)
+GITHUB_STOCK_URL = os.getenv(
+    "GITHUB_STOCK_URL",
+    "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/stock.json"
+)

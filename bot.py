@@ -84,6 +84,79 @@ async def cmd_orders(message: Message):
     await message.answer("📦 <b>Aapke Orders:</b>\n\n" + "\n".join(lines), parse_mode=ParseMode.HTML)
 
 
+# bot.py me yeh command add karein:
+@dp.message(Command("addstock"))
+async def cmd_add_stock(message: Message):
+    if message.from_user.id not in config.ADMIN_IDS:[cite: 3]
+        await message.answer("⛔ Aap admin nahi hain.")[cite: 3]
+        return
+
+    try:
+        parts = message.text.split("\n", 1)
+        first_line = parts[0].strip().split()
+        if len(first_line) < 2 or len(parts) < 2:
+            await message.answer(
+                "❌ <b>Format galat hai! Use karein:</b>\n\n"
+                "<code>/addstock &lt;product_id&gt;\n"
+                "email1@gmail.com:pass1\n"
+                "email2@gmail.com:pass2\n"
+                "email3@gmail.com:pass3</code>",
+                parse_mode=ParseMode.HTML
+            )
+            return
+
+        product_id = int(first_line[1])
+        product = db.get_product(product_id)[cite: 3]
+        if not product:
+            await message.answer("❌ Yeh Product ID exist nahi karti.")
+            return
+
+        accounts = [acc.strip() for acc in parts[1].strip().split("\n") if acc.strip()]
+        added = db.add_bulk_accounts(product_id, accounts)
+
+        await message.answer(
+            f"✅ <b>Stock Updated!</b>\n\n"
+            f"Product: <b>{escape(product['name'])}</b>\n"
+            f"Added Accounts: <code>{added}</code>\n"
+            f"Total Fresh Stock Available: <code>{product['stock'] + added}</code>",
+            parse_mode=ParseMode.HTML
+        )
+    except Exception as e:
+        await message.answer(f"❌ Error: {escape(str(e))}")
+
+
+# bot.py ke notify_payment_success ko replace karein:
+async def notify_payment_success(order: dict):
+    product = db.get_product(order["product_id"])
+    pname = escape(product["name"]) if product else "Item"
+
+    # Turant database se fresh account nikalein
+    delivered_data = db.deliver_account_for_order(order["product_id"], order["id"])
+
+    if delivered_data:
+        delivery_msg = (
+            f"🎁 <b>Aapka Product Deliver Ho Gaya Hai:</b>\n\n"
+            f"<code>{escape(delivered_data)}</code>\n\n"
+            f"⚠️ <i>Kripya credentials safe rakhein aur login karke password check kar lein.</i>"
+        )
+    else:
+        delivery_msg = (
+            f"⚠️ <b>Notice:</b> Payment confirm ho gayi hai lekin account stock instantly deliver nahi ho paya.\n"
+            f"Hamare admin aapko manually delivery provide karenge. Support button se contact karein."
+        )
+
+    try:
+        await bot.send_message(
+            order["user_id"],
+            f"✅ <b>Payment Received!</b>\n\n"
+            f"Order #{order['id']} — <b>{pname}</b>\n"
+            f"Amount: {order['amount']} {order['currency']}\n\n"
+            f"{delivery_msg}",
+            parse_mode=ParseMode.HTML
+        )
+    except Exception:
+        logger.exception("Failed to notify user %s", order.get("user_id"))
+
 # ------------------------------------------------------------------
 # Help Commands
 # ------------------------------------------------------------------

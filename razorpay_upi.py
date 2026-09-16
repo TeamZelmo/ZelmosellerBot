@@ -2,12 +2,10 @@
 Razorpay ke through UPI payment.
 Razorpay 'Payment Links' API use kar rahe hain - isse ek link/QR ban jata hai
 jo user UPI apps (GPay, PhonePe, Paytm) se pay kar sakta hai.
-
-Docs: https://razorpay.com/docs/api/payments/payment-links/
 """
-import razorpay
-import hmac
 import hashlib
+import hmac
+import razorpay
 from config import RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET
 
 client = razorpay.Client(auth=(RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET))
@@ -33,15 +31,12 @@ def create_upi_payment_link(order_db_id: int, amount_inr: float, description: st
         "callback_method": "get",
     }
     link = client.payment_link.create(payload)
-    # link['id'] -> plink_xxxx  (ye hum gateway_order_id ke roop mein store karenge)
-    # link['short_url'] -> user ko bhejne wala payment link/QR page
     return link
 
 
 def verify_webhook_signature(payload_body: bytes, signature_header: str) -> bool:
     """
-    Razorpay webhook signature verify karta hai (security ke liye zaroori,
-    warna koi bhi fake 'payment success' bhej sakta hai).
+    Razorpay webhook signature verify karta hai.
     """
     if not RAZORPAY_WEBHOOK_SECRET:
         return False

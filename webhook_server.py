@@ -11,7 +11,8 @@ import logging
 from fastapi import FastAPI, Request, Header, HTTPException
 
 import database as db
-from payments import razorpay_upi, binance_pay
+import razorpay_upi
+import binance_pay
 import bot as bot_module   # bot instance + notify_payment_success yahan se aata hai
 
 logger = logging.getLogger(__name__)

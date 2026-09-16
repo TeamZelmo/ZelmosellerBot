@@ -5,8 +5,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 # ---------------- Persistent Bottom Keyboards ----------------
 def main_bottom_keyboard() -> ReplyKeyboardMarkup:
     kb = [
-        [KeyboardButton(text="🛍️ Shop"), KeyboardButton(text="📦 Orders")],
-        [KeyboardButton(text="💱 Change Currency")]
+        [KeyboardButton(text="🛍️ Shop"), KeyboardButton(text="📦 Orders"), KeyboardButton(text="profile"),],
+        [KeyboardButton(text="💱 Change Currency"),  KeyboardButton(text="support")]
     ]
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 

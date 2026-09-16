@@ -2,7 +2,7 @@ from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMar
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
-# ---------------- Persistent Bottom Keyboards ----------------
+# ---------------- Persistent Main Menu ----------------
 def main_bottom_keyboard() -> ReplyKeyboardMarkup:
     kb = [
         [KeyboardButton(text="🛍️ Shop"), KeyboardButton(text="📦 Orders"), KeyboardButton(text="👤 Profile")],
@@ -19,9 +19,27 @@ def currency_bottom_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 
+# ---------------- Bottom Quantity Controller (- / +) ----------------
+def quantity_bottom_keyboard(product_id: int, current_qty: int) -> ReplyKeyboardMarkup:
+    kb = [
+        [
+            KeyboardButton(text=f"➖ Dec #{product_id}_{current_qty}"),
+            KeyboardButton(text=f"📦 Qty: {current_qty}"),
+            KeyboardButton(text=f"➕ Inc #{product_id}_{current_qty}")
+        ],
+        [KeyboardButton(text=f"✅ Confirm #{product_id}_{current_qty}")],
+        [KeyboardButton(text="🔙 Back to Catalog"), KeyboardButton(text="🔙 Back to Menu")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+
+# ---------------- Bottom Payment Selection ----------------
 def payment_method_bottom_keyboard(product_id: int, quantity: int) -> ReplyKeyboardMarkup:
     kb = [
-        [KeyboardButton(text=f"💳 Pay UPI #{product_id} x{quantity}"), KeyboardButton(text=f"🪙 Pay Binance #{product_id} x{quantity}")],
+        [
+            KeyboardButton(text=f"💳 Pay UPI #{product_id} x{quantity}"),
+            KeyboardButton(text=f"🪙 Pay Binance #{product_id} x{quantity}")
+        ],
         [KeyboardButton(text="🔙 Back to Catalog"), KeyboardButton(text="🔙 Back to Menu")]
     ]
     return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
@@ -34,17 +52,6 @@ def products_keyboard(products: list, currency: str = "INR") -> InlineKeyboardMa
         price = f"₹{p['price_inr']}" if currency == "INR" else f"{p['price_usdt']} USDT"
         kb.button(text=f"{p['name']} — {price}", callback_data=f"product_{p['id']}")
     kb.adjust(1)
-    return kb.as_markup()
-
-
-def quantity_inline_keyboard(product_id: int, qty: int, stock: int) -> InlineKeyboardMarkup:
-    kb = InlineKeyboardBuilder()
-    kb.button(text="➖", callback_data=f"qty_dec_{product_id}_{qty}")
-    kb.button(text=f"📦 {qty}", callback_data="qty_noop")
-    kb.button(text="➕", callback_data=f"qty_inc_{product_id}_{qty}_{stock}")
-    kb.button(text="💳 Proceed to Checkout", callback_data=f"qty_confirm_{product_id}_{qty}")
-    kb.button(text="⬅️ Back to Catalog", callback_data="back_to_catalog")
-    kb.adjust(3, 1, 1)
     return kb.as_markup()
 
 

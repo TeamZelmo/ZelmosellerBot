@@ -1,10 +1,4 @@
- """
-Binance Pay Merchant API integration - crypto (USDT etc.) payments ke liye.
-Flow:
-1. create_order() call karo -> Binance ek prepayId + checkout QR/deeplink deta hai
-2. User Binance app se pay karta hai
-3. Binance webhook bhejta hai -> verify_webhook() se signature check karo -> order paid mark karo
-"""
+
 import hashlib
 import hmac
 import json

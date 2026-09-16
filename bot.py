@@ -26,7 +26,44 @@ logger = logging.getLogger(__name__)[cite: 3]
 bot = Bot(token=config.BOT_TOKEN)[cite: 3]
 dp = Dispatcher()[cite: 3]
 
+# ------------------------------------------------------------------
+# /help Command (User & Admin Smart Menu)
+# ------------------------------------------------------------------
+@dp.message(Command("help"))
+async def cmd_help(message: Message):
+    is_admin = message.from_user.id in config.ADMIN_IDS
 
+    # Normal users ke liye help guide
+    help_text = (
+        "📖 <b>Store Help & Commands:</b>\n\n"
+        "🛍️ <code>/shop</code> — Hamare active products browse karein\n"
+        "📦 <code>/orders</code> — Apni previous order history check karein\n"
+        "❓ <code>/help</code> — Yeh command list dekhein\n\n"
+        "💡 <b>Quick Tips:</b>\n"
+        "• Screen ke neeche diye buttons se aap direct Currency change kar sakte hain aur Profile/Support access kar sakte hain.\n"
+        "• UPI (GPay/PhonePe/Paytm) aur Binance Pay (USDT) dono se payment kar sakte hain.\n"
+    )
+
+    # Agar sender admin hai, toh admin commands bhi list honge
+    if is_admin:
+        help_text += (
+            "\n"
+            "━━━━━━━━━━━━━━━━━━━\n"
+            "🛠️ <b>Admin Control Panel:</b>\n\n"
+            "➕ <b>Single Product:</b>\n"
+            "<code>/addproduct Name | Description | price_inr | price_usdt | stock</code>\n\n"
+            "📦 <b>Bulk Products:</b>\n"
+            "<code>/bulkadd\n"
+            "Item1 | Desc | inr | usdt | stock\n"
+            "Item2 | Desc | inr | usdt | stock</code>\n\n"
+            "✏️ <b>Change Price:</b>\n"
+            "<code>/setprice &lt;product_id&gt; | &lt;inr&gt; | &lt;usdt&gt;</code>\n\n"
+            "🗑️ <b>Delete Product:</b>\n"
+            "<code>/delproduct &lt;product_id&gt;</code>\n"
+        )
+
+    await message.answer(help_text, parse_mode=ParseMode.HTML)
+    
 # ------------------------------------------------------------------
 # /start & Main Navigation
 # ------------------------------------------------------------------

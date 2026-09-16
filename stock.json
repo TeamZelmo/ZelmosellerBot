@@ -13,5 +13,29 @@
       "chatgpt1@gmail.com:gptpass1",
       "chatgpt2@gmail.com:gptpass2"
     ]
-  }
+  },
+  {
+    "product_id": 3,
+    "accounts": [
+      "netflixuser1@gmail.com:pass123",
+      "netflixuser2@gmail.com:pass456",
+      "netflixuser3@gmail.com:pass789"
+    ]
+  },
+  {
+    "product_id": 4,
+    "accounts": [
+      "netflixuser1@gmail.com:pass123",
+      "netflixuser2@gmail.com:pass456",
+      "netflixuser3@gmail.com:pass789"
+    ]
+  },
+  {
+    "product_id": 5,
+    "accounts": [
+      "netflixuser1@gmail.com:pass123",
+      "netflixuser2@gmail.com:pass456",
+      "netflixuser3@gmail.com:pass789"
+    ]
+  },
 ]

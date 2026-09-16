@@ -1,7 +1,7 @@
 import asyncio
 from html import escape
 import logging
-import biinance_pay
+import binance_pay
 import razorpay_upi
 
 from aiogram import Bot, Dispatcher, F
